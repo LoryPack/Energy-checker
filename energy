@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Manual energy log CLI: energy <score> [word…]"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from common import append_csv_row, isoformat, now_local, parse_energy_input  # noqa: E402
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="energy",
+        description="Manually log an energy score (1–5) to ~/energy-log/energy.csv",
+    )
+    parser.add_argument("score", help="Integer 1–5")
+    parser.add_argument(
+        "word",
+        nargs="*",
+        help="Optional one-word (or short) note, e.g. scattered",
+    )
+    args = parser.parse_args(argv)
+
+    text = args.score if not args.word else f"{args.score} {' '.join(args.word)}"
+    parsed = parse_energy_input(text)
+    if parsed is None:
+        print("Invalid input. Use: energy <1-5> [optional word(s)]", file=sys.stderr)
+        return 1
+
+    score, word = parsed
+    append_csv_row(
+        {
+            "timestamp": isoformat(now_local()),
+            "score": str(score),
+            "word": word,
+            "source": "manual",
+            "status": "logged",
+            "prompted_at": "",
+        }
+    )
+    note = f" ({word})" if word else ""
+    print(f"Logged energy {score}{note}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
